@@ -6,8 +6,12 @@ using Newtonsoft;
 
 public class ManageJson : MonoBehaviour
 {
-    public const string BrainFile = "Brain.json";
+    public const string BrainFile = "Brain.json"; //sätter nament på sparfilen
     
+    /// <summary>
+    /// Sparat nätverk
+    /// </summary>
+    /// <param name="networks">nätverk att spara</param>
     public static void SaveNetworkToJson(List<NeuralNetwork> networks)
     {
         var path = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
@@ -18,6 +22,10 @@ public class ManageJson : MonoBehaviour
         File.WriteAllText(path, data);
     }
 
+    /// <summary>
+    /// hämtar sparadt nätverk
+    /// </summary>
+    /// <returns></returns>
     public static List<NeuralNetwork> GetSavedNetwork()
     {
         try
@@ -35,6 +43,12 @@ public class ManageJson : MonoBehaviour
             return new List<NeuralNetwork>();
         }
     }
+
+    /// <summary>
+    /// Get ett vist antal av nätverket
+    /// </summary>
+    /// <param name="count">hur många</param>
+    /// <returns></returns>
     public static List<NeuralNetwork> GetSavedNetwork(int count)
     {
         try
@@ -45,7 +59,7 @@ public class ManageJson : MonoBehaviour
             path = Path.Combine(path, BrainFile);
             var data = File.ReadAllText(path);
             var network = Newtonsoft.Json.JsonConvert.DeserializeObject<List<NeuralNetwork>>(data);
-            if(network.Count < count || count < 1)
+            if(network.Count < count || count < 1) // så att det finns så många nätverk som är bätt om
             {
                 return null;
             }

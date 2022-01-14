@@ -13,16 +13,10 @@ public class ShowBestManager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        net = ManageJson.GetSavedNetwork(1)[0];
-        GameObject carobj = (GameObject)Instantiate(CarPrefab, StartingPos, CarPrefab.transform.rotation, transform);
+        net = ManageJson.GetSavedNetwork(1)[0]; // tar den bästa sparade nätverk
+        GameObject carobj = (GameObject)Instantiate(CarPrefab, StartingPos, CarPrefab.transform.rotation, transform); //skapar ny bil
         carobj.transform.Rotate(Rotation);
         CarController car = carobj.GetComponent<CarController>();
-        car.Init(net, StartingPos);
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
+        car.Init(net, StartingPos); //sätter nätverk till bilen
     }
 }

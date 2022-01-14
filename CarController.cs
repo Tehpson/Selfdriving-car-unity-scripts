@@ -6,23 +6,26 @@ public class CarController : MonoBehaviour
     private const string HORIZONTAL = "Horizontal";
     private const string VERTICAL = "Vertical";
 
+    //ifall man vill köra bilen själv
     public bool isUserControled = false;
 
-    public float idealRPM = 500f;
-    public float maxRPM = 1000f;
+
 
     public Transform centerOfGravity;
 
+    //collider obeject så att man kan anvädna hjulen
     public WheelCollider WheelFL;
     public WheelCollider WheelFR;
     public WheelCollider WheelRL;
     public WheelCollider WheelRR;
 
+    //hur bilen ska bete sig
+    public float idealRPM = 500f;
+    public float maxRPM = 1000f;
     public float turnRadius = 30f;
     public float toruqe = 250f;
     public float breakTorque = 100f;
-
-    public float AntiRoll = 20000.0f;
+public float AntiRoll = 20000.0f;
 
     public NeuralNetwork network;
 
@@ -53,12 +56,13 @@ public class CarController : MonoBehaviour
     private bool[] CheackpointPassed;
     private int lap = 0;
 
+    //dem två olika mangerns så att det går att anvädna både med kollision och inte
     private Manager Manager;
     private Manager_Grid Manager_grid;
-    private ManagerCity Manager_City;
 
     private Vector3 lastPosition;
 
+    //för fittnes i tidigt stadie
     private float totalDistanceTravelled;
     private float avgSpeed;
 
@@ -71,7 +75,7 @@ public class CarController : MonoBehaviour
     private void InputSensors()
     {
         var F = transform.forward;
-        var RE = -F;
+        
         var R = transform.right;
         var L = -R;
         var FR = F + R; 
@@ -81,6 +85,8 @@ public class CarController : MonoBehaviour
         var FRR = F + R + R;
         var FLL = F + L + L;
         /*
+        // sensornenra för att kunna "se" backomsig (detta är till ifall man ska köra i stad eller med kollision
+        var RE = -F;
         var RER = RE + R; 
         var REL = RE + L;
         var REREL = RE + RE + L;
@@ -93,19 +99,19 @@ public class CarController : MonoBehaviour
         var directions = new List<Vector3>() { F, R, L, FR, FL, FFL, FFR, FRR, FLL/*, RER, REL, REREL, RERER, RERR, RELL, RE*/ };
         Sensors.Clear();
 
-        var vecor = new Vector3(transform.position.x, transform.position.y + 0.2f, transform.position.z);
-        var r = new Ray(vecor, FR);
+        var vecor = new Vector3(transform.position.x, transform.position.y + 0.2f, transform.position.z); // sätter att strolarana ska börja ifrån mitten av bilen
+        var r = new Ray(vecor, F); //ny ray med F som riktgiing bara för att kunna ästta något  
         LayerMask layerMask = 1 << 7;
         foreach (var direction in directions)
         {
             r.direction = direction;
-            if (Physics.Raycast(r.origin, r.direction, out hit, 300f, 1))
+            if (Physics.Raycast(r.origin, r.direction, out hit, 300f, 1)) //send out ray
             {
-                Sensors.Add(hit.distance);
+                Sensors.Add(hit.distance); //distance to wall
                 Debug.DrawLine(r.origin, hit.point, Color.red);
             }
         }
-        Sensors.Add(rigidbody.velocity.magnitude);
+        Sensors.Add(rigidbody.velocity.magnitude); //Speed of car
     }
 
 
@@ -127,31 +133,23 @@ public class CarController : MonoBehaviour
     {
         for (int i = 0; i < Cheackpoints.Count; i++)
         {
-            if (coll == Cheackpoints[i].GetComponent<Collider>() && CheackpointPassed[i] == false)
+            if (coll == Cheackpoints[i].GetComponent<Collider>() && CheackpointPassed[i] == false) //kolla ifall man redan kört igenom checkpoint
             {
                 if (i == 0)
                 {
-                    CheackpointTime[i] = timeSinceStart;
-                    CheackpointPassed[i] = true;
-                    overalFittness = (1000 * (i + 1)) * ((lap+1) *10000)  - CheackpointTime[i];
-
-                    network.SetFitness(overalFittness);
+                    GiveFittnes(i);
                 }
-                else if (CheackpointPassed[i - 1] == true)
+                else if (CheackpointPassed[i - 1] == true) // kolla så att man kört igneom tidiagre checkpoint
                 {
-                    CheackpointTime[i] = timeSinceStart;
-                    CheackpointPassed[i] = true;
-                    overalFittness = (1000 * (i + 1)) * ((lap + 1) * 10000) - CheackpointTime[i];
-
-                    network.SetFitness(overalFittness);
-                    if(i == Cheackpoints.Count - 1)
+                    GiveFittnes(i);
+                    if (i == Cheackpoints.Count - 1) // ifall det är sista checkpoint
                     {
                         for (int j = 0; j < CheackpointPassed.Length; j++)
                         {
                             CheackpointPassed[j] = false;
                         }
                         lap++;
-                        if (lap ==(Manager != null ? Manager.Laps: Manager_grid.Laps))
+                        if (lap ==(Manager != null ? Manager.Laps: Manager_grid.Laps)) // sätter timer i managern 
                         {
                             if(Manager != null)
                             {
@@ -168,11 +166,20 @@ public class CarController : MonoBehaviour
         }
     }
 
+    private void GiveFittnes(int i)
+    {
+        CheackpointTime[i] = timeSinceStart;
+        CheackpointPassed[i] = true;
+        overalFittness = (1000 * (i + 1)) * ((lap + 1) * 10000) - CheackpointTime[i]; //ger ett värde som visar hur snabbt bilen kört 
+
+        network.SetFitness(overalFittness);
+    }
+
     private void CalculatePerDistance()
     {
         totalDistanceTravelled += Vector2.Distance(transform.position, lastPosition);
         avgSpeed = totalDistanceTravelled / timeSinceStart;
-        overalFittness = ((totalDistanceTravelled - 20) * distanceMultipler) + (avgSpeed * avgSpeedMultipler);
+        overalFittness = ((totalDistanceTravelled - 20) * distanceMultipler) + (avgSpeed * avgSpeedMultipler); //hur långt man kört + hur snabbt man kört
 
         network.SetFitness(overalFittness);
     }
@@ -180,16 +187,17 @@ public class CarController : MonoBehaviour
     private void Start()
     {
         rigidbody = this.GetComponent<Rigidbody>();
-        rigidbody.centerOfMass = centerOfGravity.localPosition;
+        rigidbody.centerOfMass = centerOfGravity.localPosition;//sätter så att bilens gravitation inte är i shotahejti
         CheackpointPassed = new bool[Cheackpoints.Count];
         CheackpointTime = new float[Cheackpoints.Count];
-        for (int i = 0; i < CheackpointPassed.Length; i++)
+        for (int i = 0; i < CheackpointPassed.Length; i++) //fyller lista för använding i räknade hur bra en bil kör
         {
             CheackpointPassed[i] = false;
             CheackpointTime[i] = -1;
         }
     }
 
+    //körs varje frame
     private void FixedUpdate()
     {
         InputSensors();
@@ -200,12 +208,14 @@ public class CarController : MonoBehaviour
         }
         else
         {
-            //Create all Values into an array
-            // send in value and get out 3 putput for what to do
+            //lägger alla värden från sensorerna i en array 
+            //Sickar in värden för att få ut hur bilen sak bete sig
             float[] output = network.FeedForward(Sensors.ToArray());
 
             verticalInput = output[0];
             horizontalInput = output[1];
+
+            //sätter ifall handbromen ska aktiv eller ej
             if(output[2] > 0)
             {
                 isBreaking = true;
@@ -220,6 +230,7 @@ public class CarController : MonoBehaviour
 
         timeSinceStart += Time.deltaTime;
         time += Time.deltaTime;
+        //varje 2 sekunder sätter nu postition som bilken räknar ifrån för sin fittnes 
         if (time > 2)
         {
             time = 0;
@@ -231,24 +242,26 @@ public class CarController : MonoBehaviour
 
     private void MoveCar()
     {
-        var scaledTorque = verticalInput * toruqe;
+        var scaledTorque = verticalInput * toruqe; //vad tourq faktigkt är 
 
         if (WheelFL.rpm < idealRPM)
         {
-            scaledTorque = Mathf.Lerp(scaledTorque / 10f, scaledTorque, WheelFL.rpm / idealRPM);
+            scaledTorque = Mathf.Lerp(scaledTorque / 10f, scaledTorque, WheelFL.rpm / idealRPM); //sätter ifall vartalet ärför lågt
         }
         else
         {
-            scaledTorque = Mathf.Lerp(scaledTorque, 0, (WheelFL.rpm - idealRPM) / (maxRPM - idealRPM));
+            scaledTorque = Mathf.Lerp(scaledTorque, 0, (WheelFL.rpm - idealRPM) / (maxRPM - idealRPM)); // sätter ifall varvtaler ät rätt
 
             DoRollBar(WheelFR, WheelFL);
         }
+        //sätter vinkeln få framhjulen
         WheelFL.steerAngle = horizontalInput * turnRadius;
         WheelFR.steerAngle = horizontalInput * turnRadius;
 
         var rigidbody = GetComponent<Rigidbody>();
         if (rigidbody.velocity.y > 0 || scaledTorque > 0)
         {
+            //sätter kraft på alal hjul så att bilen rör sig frammot
             WheelRL.motorTorque = scaledTorque;
             WheelRR.motorTorque = scaledTorque;
             WheelFL.motorTorque = scaledTorque;
@@ -256,6 +269,7 @@ public class CarController : MonoBehaviour
         }
         else
         {
+            //sätter kraft på alal hjul backåt
             WheelRL.motorTorque = scaledTorque / 5;
             WheelRR.motorTorque = scaledTorque / 5;
             WheelFL.motorTorque = scaledTorque / 5;
@@ -275,7 +289,7 @@ public class CarController : MonoBehaviour
         }
     }
 
-    private void DoRollBar(WheelCollider WheelL, WheelCollider WheelR)
+    private void DoRollBar(WheelCollider WheelL, WheelCollider WheelR) //gör så att gravitiation och hur bilen ska luta sig funkar. (detta är taget från youtube)
     {
         var travlL = 1.0f;
         var travlR = 1.0f;
@@ -325,10 +339,5 @@ public class CarController : MonoBehaviour
         lastPosition = StartingPoss;
 
     }
-    public void Init(NeuralNetwork net, ManagerCity manager)
-    {
-        network = net;
-        this.Manager_City = manager;
 
-    }
 }

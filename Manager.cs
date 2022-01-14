@@ -17,15 +17,21 @@ public class Manager : MonoBehaviour
     private bool isTimerStarted = false;
     private bool isTraning = false;
     public int generationNumber = 0;
-    private readonly int[] layers = new int[] { 10, 8, 8, 8, 3 };
+    private readonly int[] layers = new int[] { 10, 8, 8, 8, 3 }; // sätter hur många lager och hur många näder på alla lager
     private List<NeuralNetwork> nets;
     private List<CarController> cars = null;
+    /// <summary>
+    /// stänger av träningsläge
+    /// </summary>
     void Timer()
     {
         isTraning = false;
         isTimerStarted = false;
     }
 
+    /// <summary>
+    /// Sätter timer för hur länge en genreation ska trännas
+    /// </summary>
     public  void StartTimer()
     {
         if (!isTimerStarted)
@@ -50,16 +56,15 @@ public class Manager : MonoBehaviour
                 nets = nets.OrderByDescending(x => x.fitness).ToList();
 
                 ManageJson.SaveNetworkToJson(nets);
-                //mutets half of the the population
-                for (int i = 0; i < populationSize / 10; i++)
+                for (int i = 0; i < populationSize / 10; i++) // tar dem 10 bästa
                 {
 
-                    nets[i] = new NeuralNetwork(nets[i]);
+                    nets[i] = new NeuralNetwork(nets[i]); // Deepcopy
 
-                    for (int j = 10; j < populationSize; j += 10)
+                    for (int j = 10; j < populationSize; j += 10) // muterar 9 version av nätverket och lägger in i listan 
                     {
                         nets[j + i] = new NeuralNetwork(nets[i]);
-                        nets[j + i].Mutate();
+                        nets[j + i].Mutate(); //mutate network
                     }
                 }
 
@@ -88,7 +93,7 @@ public class Manager : MonoBehaviour
 
     private void CreateCars()
     {
-        //If There do exist cars then Destory them
+        //om de finns bilar tabort dem
         if (cars != null)
         {
             for (int i = 0; i < cars.Count; i++)
@@ -97,7 +102,7 @@ public class Manager : MonoBehaviour
             }
         }
         cars = new List<CarController>();
-        //create set ampunt of cars
+        //skapa nya bilar
         for (int i = 0; i < populationSize; i++)
         {
             //Spawn car;
@@ -111,18 +116,18 @@ public class Manager : MonoBehaviour
 
     private void InitCarNetWork()
     {
+        //kollar ifall det redan finns sparat nätverk
         var savedNetWork = ManageJson.GetSavedNetwork();
         if (savedNetWork.Count == 0)
         {
-            //Creates new Lsit of nuweal networks
             nets = new List<NeuralNetwork>();
             for (int i = 0; i < populationSize; i++)
             {
-                //create a nural network with Layers as above
+                //skapar ett helt nytt nuralt nätverk
                 NeuralNetwork net = new NeuralNetwork(layers);
-                //Mutases all Values so thay aint all the same
+                //Mmuterar så att alla inte är samma
                 net.Mutate();
-                //add network to the networs list
+                //lägger till allting i nätverks listan
                 nets.Add(net);
             }
         }
